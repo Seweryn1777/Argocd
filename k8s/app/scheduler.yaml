@@ -1,0 +1,115 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: scheduler-envars
+  namespace: default
+data:
+  API_HOST: '0.0.0.0'
+  API_PORT: '3000'
+  USE_LOGS: 'true'
+  REDIS_HOST: 'redis.datalayer.svc.cluster.local'
+  REDIS_PREFIX: 'scheduler-api'
+  TYPEORM_CONNECTION: 'mysql'
+  TYPEORM_DEBUG: 'false'
+  TYPEORM_HOST: 'speakeasy.csddm1yfwy1k.eu-central-1.rds.amazonaws.com'
+  TYPEORM_LOGGING: 'true'
+  TYPEORM_PORT: '3306'
+  TYPEORM_SYNCHRONIZE: 'false'
+  TYPEORM_MIGRATIONS: 'dist/migrations/*.js'
+  TYPEORM_DATABASE: 'scheduler'
+  AVAILABILITY_SLOT_IN_MIN: '30'
+  MINUTES_TO_ADD_APPOINTMENT: '180'
+  MINUTES_TO_REMOVE_APPOINTMENT: '240'
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: scheduler
+  namespace: default
+  labels:
+    app: scheduler
+spec:
+  selector:
+    app: scheduler
+  ports:
+    - port: 3000
+      name: http-3000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scheduler
+  namespace: default
+  labels:
+    app: scheduler
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  selector:
+    matchLabels:
+      app: scheduler
+  revisionHistoryLimit: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 100%
+  template:
+    metadata:
+      labels:
+        app: scheduler
+    spec:
+      containers:
+        - name: scheduler
+          image: scheduler:1
+          envFrom:
+            - configMapRef:
+                name: scheduler-envars
+            - configMapRef:
+                name: common-envars
+          env:
+            - name: TYPEORM_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: sealed-secrets
+                  key: TYPEORM_USERNAME
+            - name: TYPEORM_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: sealed-secrets
+                  key: TYPEORM_PASSWORD
+            - name: JWT_TOKEN_PRIVATE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: sealed-secrets
+                  key: JWT_TOKEN_PRIVATE_KEY
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 3000
+              name: scheduler
+          livenessProbe:
+            httpGet:
+              path: /health-check
+              port: 3000
+            initialDelaySeconds: 20
+            timeoutSeconds: 3
+            successThreshold: 1
+            failureThreshold: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health-check
+              port: 3000
+            initialDelaySeconds: 5
+            timeoutSeconds: 3
+            successThreshold: 1
+            failureThreshold: 5
+            periodSeconds: 5
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "50m"
+            limits:
+              memory: "256Mi"
+              cpu: "100m"
+      restartPolicy: Always

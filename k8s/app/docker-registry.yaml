@@ -1,0 +1,146 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: default
+  name: docker-registry
+data:
+  registry-config.yml: |
+    version: 0.1
+    log:
+      fields:
+        service: registry
+    storage:
+      cache:
+        blobdescriptor: inmemory
+      filesystem:
+        rootdirectory: /var/lib/registry
+    http:
+      addr: :5001
+      headers:
+        X-Content-Type-Options: [nosniff]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: docker-registry
+  namespace: default
+  labels:
+    app: docker-registry
+spec:
+  selector:
+    app: docker-registry
+  ports:
+    - port: 5001
+      name: http-5001
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: docker-registry
+  namespace: default
+  labels:
+    app: docker-registry
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  selector:
+    matchLabels:
+      app: docker-registry
+  revisionHistoryLimit: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 100%
+  template:
+    metadata:
+      labels:
+        app: docker-registry
+    spec:
+      volumes:
+        - name: config
+          configMap:
+            name: docker-registry
+            items:
+              - key: registry-config.yml
+                path: config.yml
+        - name: registry-vol
+          hostPath:
+            path: /home/ubuntu/data/docker-registry
+      containers:
+        - name: docker-registry
+          image: registry:2.6.2
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 5001
+              name: tcp-5001
+          volumeMounts:
+            - name: config
+              mountPath: /etc/docker/registry
+              readOnly: true
+            - name: registry-vol
+              mountPath: /var/lib/registry
+          livenessProbe:
+            tcpSocket:
+              port: 5001
+            initialDelaySeconds: 20
+            timeoutSeconds: 3
+            successThreshold: 1
+            failureThreshold: 5
+            periodSeconds: 10
+          readinessProbe:
+            tcpSocket:
+              port: 5001
+            initialDelaySeconds: 5
+            timeoutSeconds: 3
+            successThreshold: 1
+            failureThreshold: 5
+            periodSeconds: 5
+      restartPolicy: Always
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: docker-registry
+  namespace: default
+  annotations:
+    nginx.ingress.kubernetes.io/from-to-www-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "500m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-buffer-size: "256k"
+    nginx.ingress.kubernetes.io/proxy-next-upstream: "error timeout http_502"
+    nginx.ingress.kubernetes.io/http2-max-header-size: "256k"
+    nginx.ingress.kubernetes.io/large-client-header-buffers: "256 256k"
+    nginx.ingress.kubernetes.io/client-header-buffer-size: "256k"
+    nginx.ingress.kubernetes.io/client-body-buffer-size: "5m"
+    nginx.ingress.kubernetes.io/enable-brotli: "true"
+    nginx.ingress.kubernetes.io/brotli-level: "5"
+    nginx.ingress.kubernetes.io/use-gzip: "true"
+    nginx.ingress.kubernetes.io/gzip-level: "4"
+    acme.cert-manager.io/http01-edit-in-place: "true"
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      more_set_headers "X-Content-Type-Options: nosniff";
+      more_set_headers "X-Frame-Options: SAMEORIGIN";
+      more_set_headers "X-Xss-Protection: 1; mode=block";
+      more_set_headers "Content-Security-Policy: upgrade-insecure-requests";
+      more_set_headers "Referrer-Policy: no-referrer-when-downgrade";
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - speak-easy.com
+      secretName: docker-registry-tls
+  rules:
+    - host: speak-easy.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: docker-registry
+                port:
+                  number: 5001
+---

@@ -1,0 +1,46 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: scheduler-remainder-cron
+  namespace: default
+spec:
+  concurrencyPolicy: Forbid
+  schedule: "0/5 * * * *"
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: scheduler
+            image: scheduler:1
+            command: ["yarn"]
+            args: ["execute", "remainder"]
+            envFrom:
+            - configMapRef:
+                name: scheduler-envars
+            - configMapRef:
+                name: common-envars
+            securityContext:
+              runAsNonRoot: true
+              runAsUser: 1000
+              allowPrivilegeEscalation: false
+            imagePullPolicy: Never
+            env:
+            - name: TYPEORM_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: sealed-secrets
+                  key: TYPEORM_USERNAME
+            - name: TYPEORM_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: sealed-secrets
+                  key: TYPEORM_PASSWORD
+            - name: JWT_TOKEN_PRIVATE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: sealed-secrets
+                  key: JWT_TOKEN_PRIVATE_KEY
+          restartPolicy: OnFailure

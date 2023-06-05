@@ -1,0 +1,57 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingress
+  namespace: default
+  annotations:
+    cert-manager.io/issuer: "letsencrypt"
+    nginx.ingress.kubernetes.io/proxy-body-size: "20m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
+    nginx.ingress.kubernetes.io/use-gzip: "true"
+    nginx.ingress.kubernetes.io/gzip-level: "4"
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/proxy-buffer-size: "256k"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    nginx.ingress.kubernetes.io/proxy-next-upstream: "error timeout http_502"
+    nginx.ingress.kubernetes.io/http2-max-header-size: "256k"
+    nginx.ingress.kubernetes.io/large-client-header-buffers: "256 256k"
+    nginx.ingress.kubernetes.io/client-header-buffer-size: "256k"
+    nginx.ingress.kubernetes.io/client-body-buffer-size: "5m"
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      more_set_headers "X-Content-Type-Options: nosniff";
+      more_set_headers "X-Frame-Options: SAMEORIGIN";
+      more_set_headers "X-Xss-Protection: 1; mode=block";
+      more_set_headers "Content-Security-Policy: upgrade-insecure-requests";
+      more_set_headers "Referrer-Policy: no-referrer-when-downgrade";
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - speak-easy.com
+      secretName: speak-easy-tls
+  rules:
+    - host: speak-easy.com
+      http:
+        paths:
+          - path: /api/user/
+            pathType: Prefix
+            backend:
+              service:
+                name: user
+                port:
+                  number: 3000
+          - path: /api/notification/
+            pathType: Prefix
+            backend:
+              service:
+                name: notification
+                port:
+                  number: 3000
+          - path: /api/scheduler/
+            pathType: Prefix
+            backend:
+              service:
+                name: scheduler
+                port:
+                  number: 3000

@@ -1,0 +1,98 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: datalayer
+  labels:
+    app: redis
+spec:
+  ports:
+    - port: 6379
+  selector:
+    app: redis
+  clusterIP: None
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redis-configuration
+  namespace: datalayer
+data:
+  redis-cfg: |-
+    maxmemory 32mb
+    activedefrag yes
+    active-defrag-threshold-lower 10
+    active-defrag-threshold-upper 100
+    tcp-backlog 65535
+    maxmemory-policy allkeys-lru
+    hash-max-ziplist-entries 512
+    hash-max-ziplist-value 64
+    zset-max-ziplist-entries 128
+    zset-max-ziplist-value 64
+    set-max-intset-entries 512
+    client-output-buffer-limit normal 0 0 0
+    client-output-buffer-limit replica 16mb 8mb 60
+    client-output-buffer-limit pubsub 16mb 8mb 60
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: datalayer
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 1
+  selector:
+    matchLabels:
+      app: redis
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+        - image: redis:6.2.6-alpine
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 999
+            allowPrivilegeEscalation: false
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            exec:
+              command:
+                - redis-cli
+                - ping
+            failureThreshold: 5
+            initialDelaySeconds: 30
+            timeoutSeconds: 5
+          readinessProbe:
+            exec:
+              command:
+                - redis-cli
+                - ping
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 1
+          name: redis
+          ports:
+            - containerPort: 6379
+              name: redis
+          volumeMounts:
+          - mountPath: /data
+            name: data
+          - mountPath: /usr/local/etc/redis
+            name: config
+      volumes:
+        - name: data
+          emptyDir: {}
+        - name: config
+          configMap:
+            name: redis-configuration
+            items:
+              - key: redis-cfg
+                path: redis.conf
+---

@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: common-envars
+  namespace: default
+data:
+  CORS_ALLOWED_ORIGINS: 'http://localhost:3000,http://localhost,http://localhost:3001'
+  REDIS_PORT: '6379'
+  REDIS_HOST: 'redis.datalayer.svc.cluster.local'
+  USER_MICROSERVICE_PREFIX: 'user-microservice'
+  NOTIFICATION_MICROSERVICE_PREFIX: 'notification_microservice'
+  SCHEDULER_MICROSERVICE_PREFIX: 'scheduler_microservice'
+  ORDER_MICROSERVICE_PREFIX: 'order_microservice'
+  video_MICROSERVICE_PREFIX: 'video_microservice'
+  JWT_TOKEN_PUBLIC_KEY: |
+    -----BEGIN PUBLIC KEY-----
+    MIICCgKCAgEA2u1rziJU0CmoigcjNYkodsA2MEpctbw2FgoUZ6FQta+aMOFpI2gg
+    0Pi+cVmhVb2zD0KvpYdfaCVhp6cMG7WW1VQEVOwTQs5p7voaNI0dUYdWvDdvQZkn
+    uQ1KWZ7pndH8Q0+45J0H1vMiW0ezJ+FrnLqfIt8p06yZIteNVVbMhgpDC10y1KCQ
+    Gy5BTkij1jSw7yjppHUU4ExtWVPdMxoty0RLOu7xqV0Qxgu3QTUfgOCC4+q/uHlA
+    N2X7ma57QRc0GkXcFkceWPWVMTEZPf82+tXtzd4lt1KU3MyJji9kSdKf5Lr5S3AE
+    IjNcTKVtIdQRQ1iHWvGJUmwpFuMRYZsoaO31ZVc7Z+/yOLwrhZ8pD+peGiR7UkXk
+    +DnOxeGlr42y8PwApI5zAtbJnaq0Jv02uBVmMLY+Ah8mqEG8393zTfZE8V8usggH
+    QK+7kPIbbFMIteWkY8G4YiHeZfTi+ZVy77All3ZXUDTFt/nKLh9vdxpiUI2JxkVF
+    PbS5hX9uebPFSkvt95/T9BG0WNxs6xn+Pttk0AMocgJMPH862yzirGN8K0M2Yr8/
+    ajbS5IDawNYGtYpyQSrKdpWqkmaDR6Re7GRBtqZ7oot3UJwI8pIFlF0EZRYbJcVr
+    k3UoCh+E/nAi5WYYV0MMKeb3d3Lb2y5mQIlCIYoGBhJQ7yfb0QqhcY8CAwEAAQ==
+    -----END PUBLIC KEY-----
+ 

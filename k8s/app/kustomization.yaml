@@ -1,0 +1,12 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+- common-envars.yaml
+- sealed-secret.yaml
+- docker-registry.yaml
+- notification.yaml
+- scheduler-remainder.cronjob.yaml
+- scheduler.yaml
+- user.yaml
+- order.yaml
+- video.yaml
